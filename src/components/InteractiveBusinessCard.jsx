@@ -7,9 +7,9 @@ const InteractiveBusinessCard = () => {
   const [formData, setFormData] = useState({
     name: 'Viponjit Singh AMAN',
     title: 'Digital Business Consultant',
-    phone: '', // Made blank
+    phone: '',
     mapLink: 'https://maps.app.goo.gl/Cou17BteKzxrjEjH9',
-    business: '', // Made blank
+    business: '',
     photo: amanImage,
     socialMedia: {
       linkedin: '',
@@ -36,7 +36,6 @@ const InteractiveBusinessCard = () => {
   // Debug: Log the imported image
   console.log('🖼️ Imported amanImage:', amanImage);
   console.log('🖼️ amanImage type:', typeof amanImage);
-  console.log('🖼️ amanImage keys:', amanImage ? Object.keys(amanImage) : 'No keys');
 
   // Teal green color scheme
   const colors = {
@@ -96,43 +95,38 @@ const InteractiveBusinessCard = () => {
     </svg>
   );
 
-  // Improved image handler with debugging
+  // Fixed image handler
   const getImageSource = (imageData) => {
     console.log('🔍 getImageSource called with:', imageData);
-    console.log('🔍 imageData type:', typeof imageData);
     
     if (!imageData) {
-      console.log('❌ No image data, using fallback');
-      return fallbackImage;
+      console.log('❌ No image data, using imported image');
+      return amanImage;
     }
     
     // If it's a data URL or external URL
     if (typeof imageData === 'string') {
-      console.log('📝 Image is string type');
-      if (imageData.startsWith('data:')) {
-        console.log('✅ Image is data URL');
+      if (imageData.startsWith('data:') || imageData.startsWith('http')) {
+        console.log('✅ Using data URL or external URL');
         return imageData;
-      } else if (imageData.startsWith('http')) {
-        console.log('✅ Image is external URL');
-        return imageData;
-      } else {
-        console.log('❓ Image string but not data/http:', imageData);
       }
-    }
-    
-    // If it's an imported image module
-    if (imageData && typeof imageData === 'object') {
-      console.log('📦 Image is object type');
-      console.log('📦 Image object keys:', Object.keys(imageData));
       
-      if (imageData.default) {
-        console.log('✅ Using image.default:', imageData.default);
-        return imageData.default;
+      // If it's the problematic Firebase path, use imported image
+      if (imageData === '/src/assets/images/aman.jpg') {
+        console.log('🔄 Converting Firebase path to imported image');
+        return amanImage;
+      }
+      
+      // If it's already the deployed path, use it directly
+      if (imageData.startsWith('/assets/')) {
+        console.log('✅ Using deployed asset path');
+        return imageData;
       }
     }
     
-    console.log('⚠️ Using fallback image');
-    return imageData || fallbackImage;
+    // For imported image modules or any other case
+    console.log('✅ Using imported image directly');
+    return amanImage;
   };
 
   // Load data from Firebase on component mount
@@ -147,11 +141,14 @@ const InteractiveBusinessCard = () => {
         if (docSnap.exists()) {
           console.log('✅ Firebase data found:', docSnap.data());
           const data = docSnap.data();
-          // Ensure photo is properly handled when loading from Firebase
+          
+          // Fix the photo data from Firebase
           const processedData = {
             ...data,
-            photo: data.photo || amanImage
+            // Always use the imported image for the photo, ignore Firebase photo path
+            photo: amanImage
           };
+          
           console.log('🖼️ Processed photo data:', processedData.photo);
           setFormData(processedData);
           showNotification('Data loaded successfully!', 'success');
@@ -160,7 +157,8 @@ const InteractiveBusinessCard = () => {
           // Save initial data if document doesn't exist
           await setDoc(docRef, {
             ...formData,
-            photo: typeof amanImage === 'string' ? amanImage : 'amanImage'
+            // Don't save the image path to Firebase
+            photo: 'default'
           });
           showNotification('Initial data saved!', 'success');
         }
@@ -246,10 +244,19 @@ END:VCARD`;
     setSaving(true);
     try {
       console.log('💾 Saving data to Firebase:', tempFormData);
+      
+      // Prepare data for Firebase - don't save the actual image data
+      const dataToSave = {
+        ...tempFormData,
+        // Don't save image data to Firebase, just a marker
+        photo: 'user-uploaded'
+      };
+      
       // Save to Firebase
       const docRef = doc(db, 'businessCards', 'viponjitSingh');
-      await setDoc(docRef, tempFormData);
+      await setDoc(docRef, dataToSave);
       
+      // Update local state
       setFormData(tempFormData);
       closeEditModal();
       showNotification('Profile updated and saved to cloud!', 'success');
@@ -288,13 +295,12 @@ END:VCARD`;
     }
   };
 
-  // Improved image error handler with detailed logging
+  // Improved image error handler
   const handleImageError = (e, location = 'unknown') => {
     console.error(`❌ Image error in ${location}:`, e);
     console.error(`❌ Target src:`, e.target.src);
-    console.error(`❌ Target naturalWidth:`, e.target.naturalWidth);
-    console.error(`❌ Target naturalHeight:`, e.target.naturalHeight);
     
+    // Use fallback image
     e.target.src = fallbackImage;
     setImageError(true);
   };
@@ -326,7 +332,8 @@ END:VCARD`;
           });
           console.log('✅ External image converted to data URL');
         } else {
-          console.log('⚠️ Unknown image type, using fallback');
+          // For imported images in production, use fallback
+          console.log('📦 Using fallback image for interactive card');
           photoBase64 = fallbackImage;
         }
       } catch (photoError) {
@@ -344,7 +351,6 @@ ORG:${formData.business}
 TEL:${formData.phone}
 END:VCARD`;
 
-      // ... rest of createInteractiveCard function remains the same
       const cardHTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -522,7 +528,7 @@ END:VCARD`;
 <body>
   <div class="business-card">
     <div class="header">
-      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="console.error('Interactive card image failed to load')">` : ''}
+      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="this.style.display='none'">` : ''}
       <div class="name">${formData.name}</div>
       ${formData.title ? `<div class="title">${formData.title}</div>` : ''}
     </div>
@@ -614,9 +620,7 @@ END:VCARD`;
   </div>
 
   <script>
-    console.log('Interactive business card loaded');
     window.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM loaded, generating QR code...');
       if (window.QRious) {
         const vCardData = \`${vCardData}\`;
         new QRious({
@@ -627,14 +631,10 @@ END:VCARD`;
           foreground: '${colors.primary}',
           level: 'M'
         });
-        console.log('QR code generated');
-      } else {
-        console.error('QRious not available');
       }
     });
     
     function saveContact() {
-      console.log('Saving contact...');
       const vCardData = \`${vCardData}\`;
       const blob = new Blob([vCardData], { type: 'text/vcard' });
       const url = URL.createObjectURL(blob);
@@ -643,7 +643,6 @@ END:VCARD`;
       a.download = '${formData.name.replace(/\s+/g, '_')}_Contact.vcf';
       a.click();
       URL.revokeObjectURL(url);
-      console.log('Contact saved');
     }
   </script>
 </body>
