@@ -129,6 +129,98 @@ const InteractiveBusinessCard = () => {
     return amanImage;
   };
 
+  // Phone number sanitization function
+  const sanitizePhone = (phone) => {
+    if (!phone) return '';
+    
+    // Replace fancy Unicode digits with regular ASCII digits
+    const unicodeMap = {
+      '𝟬': '0', '𝟭': '1', '𝟮': '2', '𝟯': '3', '𝟰': '4',
+      '𝟱': '5', '𝟲': '6', '𝟳': '7', '𝟴': '8', '𝟵': '9',
+      '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+      '５': '5', '６': '6', '７': '7', '８': '8', '９': '9'
+    };
+    
+    let cleaned = phone;
+    Object.keys(unicodeMap).forEach(fancy => {
+      cleaned = cleaned.split(fancy).join(unicodeMap[fancy]);
+    });
+    
+    // Remove all non-digit characters except + and -
+    cleaned = cleaned.replace(/[^\d+\-]/g, '');
+    
+    return cleaned;
+  };
+
+  // Generate vCard data for QR code
+  const generateVCardData = () => {
+    const cleanPhone = sanitizePhone(formData.phone);
+    const cleanName = formData.name ? formData.name.trim() : '';
+    const nameParts = cleanName.split(' ');
+    const lastName = nameParts[nameParts.length - 1] || '';
+    const firstName = nameParts.slice(0, -1).join(' ') || nameParts[0] || '';
+    
+    // Build vCard with proper formatting
+    const vCardData = 
+      'BEGIN:VCARD\n' +
+      'VERSION:3.0\n' +
+      `FN:${cleanName}\n` +
+      `N:${lastName};${firstName};;;\n` +
+      (formData.title ? `TITLE:${formData.title}\n` : '') +
+      (formData.business ? `ORG:${formData.business}\n` : '') +
+      (cleanPhone ? `TEL;TYPE=CELL:${cleanPhone}\n` : '') +
+      (formData.mapLink ? `URL:${formData.mapLink}\n` : '') +
+      'END:VCARD';
+
+    console.log('🔍 Original phone:', formData.phone);
+    console.log('✅ Cleaned phone:', cleanPhone);
+    console.log('📋 Full vCard data:', vCardData);
+
+    return vCardData;
+  };
+
+  // Generate QR code for main card
+  const generateQRCode = () => {
+    if (!qrCanvasRef.current || !window.QRious) return;
+    
+    try {
+      const vCardData = generateVCardData();
+      
+      new window.QRious({
+        element: qrCanvasRef.current,
+        value: vCardData,
+        size: 300,
+        background: 'white',
+        foreground: colors.primary,
+        level: 'M'
+      });
+    } catch (error) {
+      console.error('QR Code generation error:', error);
+    }
+  };
+
+  // Load QRious script and generate QR code
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js';
+    script.onload = () => generateQRCode();
+    script.onerror = () => console.error('Failed to load QRious script');
+    document.head.appendChild(script);
+    
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
+  // Regenerate QR code when formData changes
+  useEffect(() => {
+    if (window.QRious) {
+      generateQRCode();
+    }
+  }, [formData, colors.primary]);
+
   // Load data from Firebase on component mount
   useEffect(() => {
     console.log('🚀 Component mounted');
@@ -176,51 +268,6 @@ const InteractiveBusinessCard = () => {
     console.log('🔄 formData updated:', formData);
     console.log('🖼️ Current formData.photo:', formData.photo);
     console.log('🖼️ formData.photo type:', typeof formData.photo);
-  }, [formData]);
-
-  const generateQRCode = () => {
-    if (!qrCanvasRef.current || !window.QRious) return;
-    
-    try {
-      const vCardData = `BEGIN:VCARD
-VERSION:3.0
-FN:${formData.name}
-TITLE:${formData.title}
-ORG:${formData.business}
-TEL:${formData.phone}
-END:VCARD`;
-
-      new window.QRious({
-        element: qrCanvasRef.current,
-        value: vCardData,
-        size: 200,
-        background: 'white',
-        foreground: colors.primary,
-        level: 'M'
-      });
-    } catch (error) {
-      console.error('QR Code generation error:', error);
-    }
-  };
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js';
-    script.onload = () => generateQRCode();
-    script.onerror = () => console.error('Failed to load QRious script');
-    document.head.appendChild(script);
-    
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (window.QRious) {
-      generateQRCode();
-    }
   }, [formData]);
 
   const showNotification = (message, type = 'info') => {
@@ -305,6 +352,62 @@ END:VCARD`;
     setImageError(true);
   };
 
+  // Function to convert image to base64 for the interactive card
+  const getImageBase64 = async (imageSource) => {
+    try {
+      console.log('🎨 Processing image for base64 conversion:', imageSource);
+      
+      // If it's already a data URL, return it directly
+      if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
+        console.log('✅ Already a data URL, using directly');
+        return imageSource;
+      }
+      
+      // If it's an external URL, fetch and convert
+      if (typeof imageSource === 'string' && imageSource.startsWith('http')) {
+        console.log('🌐 Fetching external image for conversion...');
+        const response = await fetch(imageSource);
+        if (!response.ok) throw new Error('Failed to fetch image');
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      // For imported images (like amanImage), we need to handle them differently
+      if (typeof imageSource === 'string') {
+        // Try to fetch from the current domain
+        try {
+          const fullUrl = window.location.origin + imageSource;
+          console.log('🔗 Trying to fetch from:', fullUrl);
+          const response = await fetch(fullUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (error) {
+          console.log('❌ Failed to fetch local image, using fallback');
+        }
+      }
+      
+      // For all other cases, use fallback
+      console.log('📦 Using fallback image');
+      return fallbackImage;
+      
+    } catch (error) {
+      console.error('❌ Error converting image to base64:', error);
+      return fallbackImage;
+    }
+  };
+
   const createInteractiveCard = async () => {
     if (loading) return;
     
@@ -312,44 +415,16 @@ END:VCARD`;
     try {
       showNotification('Creating interactive business card...', 'success');
 
-      let photoBase64;
-      try {
-        console.log('🎨 Processing photo for interactive card...');
-        const currentPhoto = getImageSource(formData.photo);
-        console.log('🖼️ Current photo for processing:', currentPhoto);
-        
-        if (typeof currentPhoto === 'string' && currentPhoto.startsWith('data:')) {
-          console.log('✅ Using existing data URL');
-          photoBase64 = currentPhoto;
-        } else if (typeof currentPhoto === 'string' && currentPhoto.startsWith('http')) {
-          console.log('🌐 Fetching external image...');
-          const response = await fetch(currentPhoto);
-          const blob = await response.blob();
-          photoBase64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-          console.log('✅ External image converted to data URL');
-        } else {
-          // For imported images in production, use fallback
-          console.log('📦 Using fallback image for interactive card');
-          photoBase64 = fallbackImage;
-        }
-      } catch (photoError) {
-        console.error('❌ Photo processing error:', photoError);
-        photoBase64 = fallbackImage;
-      }
+      // Get the current photo source
+      const currentPhoto = getImageSource(formData.photo);
+      console.log('🖼️ Current photo source for interactive card:', currentPhoto);
+      
+      // Convert image to base64
+      const photoBase64 = await getImageBase64(currentPhoto);
+      console.log('✅ Photo converted to base64, length:', photoBase64.length);
 
-      console.log('📄 Final photoBase64 length:', photoBase64 ? photoBase64.length : 0);
-
-      const vCardData = `BEGIN:VCARD
-VERSION:3.0
-FN:${formData.name}
-TITLE:${formData.title}
-ORG:${formData.business}
-TEL:${formData.phone}
-END:VCARD`;
+      // Generate vCard data for the interactive card
+      const vCardData = generateVCardData();
 
       const cardHTML = `<!DOCTYPE html>
 <html>
@@ -528,7 +603,7 @@ END:VCARD`;
 <body>
   <div class="business-card">
     <div class="header">
-      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="this.style.display='none'">` : ''}
+      <img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="this.src='${fallbackImage}'">
       <div class="name">${formData.name}</div>
       ${formData.title ? `<div class="title">${formData.title}</div>` : ''}
     </div>
@@ -844,7 +919,7 @@ END:VCARD`;
                       href={`tel:${formData.phone}`} 
                       className="text-lg text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block"
                     >
-                      {formData.phone}
+                      ${formData.phone}
                     </a>
                   </div>
                 </div>
