@@ -33,6 +33,11 @@ const InteractiveBusinessCard = () => {
   // Fallback image URL
   const fallbackImage = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80';
 
+  // Debug: Log the imported image
+  console.log('🖼️ Imported amanImage:', amanImage);
+  console.log('🖼️ amanImage type:', typeof amanImage);
+  console.log('🖼️ amanImage keys:', amanImage ? Object.keys(amanImage) : 'No keys');
+
   // Teal green color scheme
   const colors = {
     primary: '#0d9488',
@@ -91,42 +96,67 @@ const InteractiveBusinessCard = () => {
     </svg>
   );
 
-  // Improved image handler
+  // Improved image handler with debugging
   const getImageSource = (imageData) => {
-    if (!imageData) return fallbackImage;
+    console.log('🔍 getImageSource called with:', imageData);
+    console.log('🔍 imageData type:', typeof imageData);
+    
+    if (!imageData) {
+      console.log('❌ No image data, using fallback');
+      return fallbackImage;
+    }
     
     // If it's a data URL or external URL
     if (typeof imageData === 'string') {
-      if (imageData.startsWith('data:') || imageData.startsWith('http')) {
+      console.log('📝 Image is string type');
+      if (imageData.startsWith('data:')) {
+        console.log('✅ Image is data URL');
         return imageData;
+      } else if (imageData.startsWith('http')) {
+        console.log('✅ Image is external URL');
+        return imageData;
+      } else {
+        console.log('❓ Image string but not data/http:', imageData);
       }
     }
     
     // If it's an imported image module
-    if (imageData && typeof imageData === 'object' && imageData.default) {
-      return imageData.default;
+    if (imageData && typeof imageData === 'object') {
+      console.log('📦 Image is object type');
+      console.log('📦 Image object keys:', Object.keys(imageData));
+      
+      if (imageData.default) {
+        console.log('✅ Using image.default:', imageData.default);
+        return imageData.default;
+      }
     }
     
+    console.log('⚠️ Using fallback image');
     return imageData || fallbackImage;
   };
 
   // Load data from Firebase on component mount
   useEffect(() => {
+    console.log('🚀 Component mounted');
     const loadData = async () => {
       try {
+        console.log('📡 Loading data from Firebase...');
         const docRef = doc(db, 'businessCards', 'viponjitSingh');
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
+          console.log('✅ Firebase data found:', docSnap.data());
           const data = docSnap.data();
           // Ensure photo is properly handled when loading from Firebase
           const processedData = {
             ...data,
             photo: data.photo || amanImage
           };
+          console.log('🖼️ Processed photo data:', processedData.photo);
           setFormData(processedData);
           showNotification('Data loaded successfully!', 'success');
         } else {
+          console.log('📝 No Firebase data, saving initial data');
           // Save initial data if document doesn't exist
           await setDoc(docRef, {
             ...formData,
@@ -135,13 +165,20 @@ const InteractiveBusinessCard = () => {
           showNotification('Initial data saved!', 'success');
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('❌ Error loading data:', error);
         showNotification('Error loading data', 'error');
       }
     };
 
     loadData();
   }, []);
+
+  // Debug formData changes
+  useEffect(() => {
+    console.log('🔄 formData updated:', formData);
+    console.log('🖼️ Current formData.photo:', formData.photo);
+    console.log('🖼️ formData.photo type:', typeof formData.photo);
+  }, [formData]);
 
   const generateQRCode = () => {
     if (!qrCanvasRef.current || !window.QRious) return;
@@ -194,11 +231,13 @@ END:VCARD`;
   };
 
   const openEditModal = () => {
+    console.log('📝 Opening edit modal with tempFormData:', formData);
     setTempFormData({...formData});
     setIsEditModalOpen(true);
   };
 
   const closeEditModal = () => {
+    console.log('❌ Closing edit modal');
     setIsEditModalOpen(false);
     setTempFormData({});
   };
@@ -206,6 +245,7 @@ END:VCARD`;
   const handleSaveEdit = async () => {
     setSaving(true);
     try {
+      console.log('💾 Saving data to Firebase:', tempFormData);
       // Save to Firebase
       const docRef = doc(db, 'businessCards', 'viponjitSingh');
       await setDoc(docRef, tempFormData);
@@ -214,7 +254,7 @@ END:VCARD`;
       closeEditModal();
       showNotification('Profile updated and saved to cloud!', 'success');
     } catch (error) {
-      console.error('Error saving data:', error);
+      console.error('❌ Error saving data:', error);
       showNotification('Error saving data to cloud', 'error');
     } finally {
       setSaving(false);
@@ -222,6 +262,7 @@ END:VCARD`;
   };
 
   const handleInputChange = (field, value) => {
+    console.log(`✏️ Field ${field} changed to:`, value);
     setTempFormData(prev => ({
       ...prev,
       [field]: value
@@ -230,21 +271,30 @@ END:VCARD`;
 
   const handlePhotoChange = (event) => {
     const file = event.target.files[0];
+    console.log('📸 Photo file selected:', file);
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
+        console.log('🖼️ FileReader loaded data URL');
         setTempFormData(prev => ({
           ...prev,
           photo: e.target.result
         }));
       };
+      reader.onerror = (error) => {
+        console.error('❌ FileReader error:', error);
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  // Improved image error handler
-  const handleImageError = (e) => {
-    console.error('Image failed to load, using fallback');
+  // Improved image error handler with detailed logging
+  const handleImageError = (e, location = 'unknown') => {
+    console.error(`❌ Image error in ${location}:`, e);
+    console.error(`❌ Target src:`, e.target.src);
+    console.error(`❌ Target naturalWidth:`, e.target.naturalWidth);
+    console.error(`❌ Target naturalHeight:`, e.target.naturalHeight);
+    
     e.target.src = fallbackImage;
     setImageError(true);
   };
@@ -258,11 +308,15 @@ END:VCARD`;
 
       let photoBase64;
       try {
+        console.log('🎨 Processing photo for interactive card...');
         const currentPhoto = getImageSource(formData.photo);
+        console.log('🖼️ Current photo for processing:', currentPhoto);
         
         if (typeof currentPhoto === 'string' && currentPhoto.startsWith('data:')) {
+          console.log('✅ Using existing data URL');
           photoBase64 = currentPhoto;
         } else if (typeof currentPhoto === 'string' && currentPhoto.startsWith('http')) {
+          console.log('🌐 Fetching external image...');
           const response = await fetch(currentPhoto);
           const blob = await response.blob();
           photoBase64 = await new Promise((resolve) => {
@@ -270,14 +324,17 @@ END:VCARD`;
             reader.onload = () => resolve(reader.result);
             reader.readAsDataURL(blob);
           });
+          console.log('✅ External image converted to data URL');
         } else {
-          // For imported images, try to convert to data URL
+          console.log('⚠️ Unknown image type, using fallback');
           photoBase64 = fallbackImage;
         }
       } catch (photoError) {
-        console.error('Photo processing error:', photoError);
+        console.error('❌ Photo processing error:', photoError);
         photoBase64 = fallbackImage;
       }
+
+      console.log('📄 Final photoBase64 length:', photoBase64 ? photoBase64.length : 0);
 
       const vCardData = `BEGIN:VCARD
 VERSION:3.0
@@ -287,6 +344,7 @@ ORG:${formData.business}
 TEL:${formData.phone}
 END:VCARD`;
 
+      // ... rest of createInteractiveCard function remains the same
       const cardHTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -464,7 +522,7 @@ END:VCARD`;
 <body>
   <div class="business-card">
     <div class="header">
-      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="this.style.display='none'">` : ''}
+      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="console.error('Interactive card image failed to load')">` : ''}
       <div class="name">${formData.name}</div>
       ${formData.title ? `<div class="title">${formData.title}</div>` : ''}
     </div>
@@ -556,7 +614,9 @@ END:VCARD`;
   </div>
 
   <script>
+    console.log('Interactive business card loaded');
     window.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, generating QR code...');
       if (window.QRious) {
         const vCardData = \`${vCardData}\`;
         new QRious({
@@ -567,10 +627,14 @@ END:VCARD`;
           foreground: '${colors.primary}',
           level: 'M'
         });
+        console.log('QR code generated');
+      } else {
+        console.error('QRious not available');
       }
     });
     
     function saveContact() {
+      console.log('Saving contact...');
       const vCardData = \`${vCardData}\`;
       const blob = new Blob([vCardData], { type: 'text/vcard' });
       const url = URL.createObjectURL(blob);
@@ -579,6 +643,7 @@ END:VCARD`;
       a.download = '${formData.name.replace(/\s+/g, '_')}_Contact.vcf';
       a.click();
       URL.revokeObjectURL(url);
+      console.log('Contact saved');
     }
   </script>
 </body>
@@ -642,7 +707,7 @@ END:VCARD`;
                     src={getImageSource(tempFormData.photo)} 
                     alt="Profile" 
                     className="w-24 h-24 rounded-full mx-auto border-4 border-teal-500 object-cover"
-                    onError={handleImageError}
+                    onError={(e) => handleImageError(e, 'edit-modal')}
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -749,7 +814,7 @@ END:VCARD`;
                 src={getImageSource(formData.photo)} 
                 alt="Viponjit Singh AMAN" 
                 className="w-24 h-24 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
-                onError={handleImageError}
+                onError={(e) => handleImageError(e, 'main-card')}
               />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
