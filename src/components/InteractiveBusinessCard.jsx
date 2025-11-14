@@ -26,8 +26,12 @@ const InteractiveBusinessCard = () => {
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const qrCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Fallback image URL
+  const fallbackImage = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80';
 
   // Teal green color scheme
   const colors = {
@@ -87,6 +91,25 @@ const InteractiveBusinessCard = () => {
     </svg>
   );
 
+  // Improved image handler
+  const getImageSource = (imageData) => {
+    if (!imageData) return fallbackImage;
+    
+    // If it's a data URL or external URL
+    if (typeof imageData === 'string') {
+      if (imageData.startsWith('data:') || imageData.startsWith('http')) {
+        return imageData;
+      }
+    }
+    
+    // If it's an imported image module
+    if (imageData && typeof imageData === 'object' && imageData.default) {
+      return imageData.default;
+    }
+    
+    return imageData || fallbackImage;
+  };
+
   // Load data from Firebase on component mount
   useEffect(() => {
     const loadData = async () => {
@@ -96,11 +119,19 @@ const InteractiveBusinessCard = () => {
         
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setFormData(data);
+          // Ensure photo is properly handled when loading from Firebase
+          const processedData = {
+            ...data,
+            photo: data.photo || amanImage
+          };
+          setFormData(processedData);
           showNotification('Data loaded successfully!', 'success');
         } else {
           // Save initial data if document doesn't exist
-          await setDoc(docRef, formData);
+          await setDoc(docRef, {
+            ...formData,
+            photo: typeof amanImage === 'string' ? amanImage : 'amanImage'
+          });
           showNotification('Initial data saved!', 'success');
         }
       } catch (error) {
@@ -211,6 +242,13 @@ END:VCARD`;
     }
   };
 
+  // Improved image error handler
+  const handleImageError = (e) => {
+    console.error('Image failed to load, using fallback');
+    e.target.src = fallbackImage;
+    setImageError(true);
+  };
+
   const createInteractiveCard = async () => {
     if (loading) return;
     
@@ -220,8 +258,12 @@ END:VCARD`;
 
       let photoBase64;
       try {
-        if (typeof formData.photo === 'string' && !formData.photo.startsWith('data:')) {
-          const response = await fetch(formData.photo);
+        const currentPhoto = getImageSource(formData.photo);
+        
+        if (typeof currentPhoto === 'string' && currentPhoto.startsWith('data:')) {
+          photoBase64 = currentPhoto;
+        } else if (typeof currentPhoto === 'string' && currentPhoto.startsWith('http')) {
+          const response = await fetch(currentPhoto);
           const blob = await response.blob();
           photoBase64 = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -229,11 +271,12 @@ END:VCARD`;
             reader.readAsDataURL(blob);
           });
         } else {
-          photoBase64 = formData.photo;
+          // For imported images, try to convert to data URL
+          photoBase64 = fallbackImage;
         }
       } catch (photoError) {
         console.error('Photo processing error:', photoError);
-        photoBase64 = '';
+        photoBase64 = fallbackImage;
       }
 
       const vCardData = `BEGIN:VCARD
@@ -421,7 +464,7 @@ END:VCARD`;
 <body>
   <div class="business-card">
     <div class="header">
-      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo">` : ''}
+      ${photoBase64 ? `<img src="${photoBase64}" alt="${formData.name}" class="photo" onerror="this.style.display='none'">` : ''}
       <div class="name">${formData.name}</div>
       ${formData.title ? `<div class="title">${formData.title}</div>` : ''}
     </div>
@@ -596,9 +639,10 @@ END:VCARD`;
               <div className="text-center">
                 <div className="relative inline-block">
                   <img 
-                    src={tempFormData.photo} 
+                    src={getImageSource(tempFormData.photo)} 
                     alt="Profile" 
                     className="w-24 h-24 rounded-full mx-auto border-4 border-teal-500 object-cover"
+                    onError={handleImageError}
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -702,13 +746,10 @@ END:VCARD`;
           <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-6 py-8 text-center">
             <div className="mb-6">
               <img 
-                src={formData.photo} 
+                src={getImageSource(formData.photo)} 
                 alt="Viponjit Singh AMAN" 
                 className="w-24 h-24 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
-                onError={(e) => {
-                  console.error('Image failed to load');
-                  e.target.style.display = 'none';
-                }}
+                onError={handleImageError}
               />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
