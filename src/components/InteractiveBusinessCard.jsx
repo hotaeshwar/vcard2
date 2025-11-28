@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import amanImage from '../assets/images/aman.jpg';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const InteractiveBusinessCard = () => {
+  // Public folder image path
+  const publicImagePath = '/images/aman.jpg';
+
   const [formData, setFormData] = useState({
     name: 'Viponjit Singh AMAN',
     title: 'Digital Business Consultant',
     phone: '',
     mapLink: 'https://maps.app.goo.gl/Cou17BteKzxrjEjH9',
-    business: '',
-    photo: amanImage,
+    photo: publicImagePath, // Use public folder path directly
+    facebook: '',
+    instagram: '',
+    whatsapp: '',
+    gmbProfile: '',
     socialMedia: {
       linkedin: '',
       twitter: '',
@@ -32,10 +37,6 @@ const InteractiveBusinessCard = () => {
 
   // Fallback image URL
   const fallbackImage = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80';
-
-  // Debug: Log the imported image
-  console.log('🖼️ Imported amanImage:', amanImage);
-  console.log('🖼️ amanImage type:', typeof amanImage);
 
   // Teal green color scheme
   const colors = {
@@ -64,11 +65,29 @@ const InteractiveBusinessCard = () => {
     </svg>
   );
 
-  const BuildingIcon = ({ size = 20, color = "#ffffff" }) => (
+  const FacebookIcon = ({ size = 20, color = "#ffffff" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/>
-      <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/>
-      <path d="M12 3v6"/>
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    </svg>
+  );
+
+  const InstagramIcon = ({ size = 20, color = "#ffffff" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+    </svg>
+  );
+
+  const WhatsAppIcon = ({ size = 20, color = "#ffffff" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+  );
+
+  const BusinessIcon = ({ size = 20, color = "#ffffff" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     </svg>
   );
 
@@ -95,38 +114,24 @@ const InteractiveBusinessCard = () => {
     </svg>
   );
 
-  // Fixed image handler
+  // Simplified image handler for public folder
   const getImageSource = (imageData) => {
-    console.log('🔍 getImageSource called with:', imageData);
-    
     if (!imageData) {
-      console.log('❌ No image data, using imported image');
-      return amanImage;
+      return publicImagePath;
     }
     
-    // If it's a data URL or external URL
+    // If it's a data URL or external URL, use it directly
     if (typeof imageData === 'string') {
       if (imageData.startsWith('data:') || imageData.startsWith('http')) {
-        console.log('✅ Using data URL or external URL');
         return imageData;
       }
       
-      // If it's the problematic Firebase path, use imported image
-      if (imageData === '/src/assets/images/aman.jpg') {
-        console.log('🔄 Converting Firebase path to imported image');
-        return amanImage;
-      }
-      
-      // If it's already the deployed path, use it directly
-      if (imageData.startsWith('/assets/')) {
-        console.log('✅ Using deployed asset path');
-        return imageData;
-      }
+      // If it's the public folder path or any other path, use public folder image
+      return publicImagePath;
     }
     
-    // For imported image modules or any other case
-    console.log('✅ Using imported image directly');
-    return amanImage;
+    // For any other case, use public folder image
+    return publicImagePath;
   };
 
   // Phone number sanitization function
@@ -155,6 +160,7 @@ const InteractiveBusinessCard = () => {
   // Generate vCard data for QR code
   const generateVCardData = () => {
     const cleanPhone = sanitizePhone(formData.phone);
+    const cleanWhatsApp = sanitizePhone(formData.whatsapp);
     const cleanName = formData.name ? formData.name.trim() : '';
     const nameParts = cleanName.split(' ');
     const lastName = nameParts[nameParts.length - 1] || '';
@@ -167,14 +173,13 @@ const InteractiveBusinessCard = () => {
       `FN:${cleanName}\n` +
       `N:${lastName};${firstName};;;\n` +
       (formData.title ? `TITLE:${formData.title}\n` : '') +
-      (formData.business ? `ORG:${formData.business}\n` : '') +
       (cleanPhone ? `TEL;TYPE=CELL:${cleanPhone}\n` : '') +
       (formData.mapLink ? `URL:${formData.mapLink}\n` : '') +
+      (formData.facebook ? `URL;TYPE=Facebook:${formData.facebook}\n` : '') +
+      (formData.instagram ? `URL;TYPE=Instagram:${formData.instagram}\n` : '') +
+      (cleanWhatsApp ? `TEL;TYPE=WhatsApp:${cleanWhatsApp}\n` : '') +
+      (formData.gmbProfile ? `URL;TYPE=GoogleBusiness:${formData.gmbProfile}\n` : '') +
       'END:VCARD';
-
-    console.log('🔍 Original phone:', formData.phone);
-    console.log('✅ Cleaned phone:', cleanPhone);
-    console.log('📋 Full vCard data:', vCardData);
 
     return vCardData;
   };
@@ -223,39 +228,32 @@ const InteractiveBusinessCard = () => {
 
   // Load data from Firebase on component mount
   useEffect(() => {
-    console.log('🚀 Component mounted');
     const loadData = async () => {
       try {
-        console.log('📡 Loading data from Firebase...');
         const docRef = doc(db, 'businessCards', 'viponjitSingh');
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          console.log('✅ Firebase data found:', docSnap.data());
           const data = docSnap.data();
           
-          // Fix the photo data from Firebase
+          // Fix the photo data from Firebase - use public folder path
           const processedData = {
             ...data,
-            // Always use the imported image for the photo, ignore Firebase photo path
-            photo: amanImage
+            photo: publicImagePath
           };
           
-          console.log('🖼️ Processed photo data:', processedData.photo);
           setFormData(processedData);
           showNotification('Data loaded successfully!', 'success');
         } else {
-          console.log('📝 No Firebase data, saving initial data');
           // Save initial data if document doesn't exist
           await setDoc(docRef, {
             ...formData,
-            // Don't save the image path to Firebase
             photo: 'default'
           });
           showNotification('Initial data saved!', 'success');
         }
       } catch (error) {
-        console.error('❌ Error loading data:', error);
+        console.error('Error loading data:', error);
         showNotification('Error loading data', 'error');
       }
     };
@@ -263,26 +261,17 @@ const InteractiveBusinessCard = () => {
     loadData();
   }, []);
 
-  // Debug formData changes
-  useEffect(() => {
-    console.log('🔄 formData updated:', formData);
-    console.log('🖼️ Current formData.photo:', formData.photo);
-    console.log('🖼️ formData.photo type:', typeof formData.photo);
-  }, [formData]);
-
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
   const openEditModal = () => {
-    console.log('📝 Opening edit modal with tempFormData:', formData);
     setTempFormData({...formData});
     setIsEditModalOpen(true);
   };
 
   const closeEditModal = () => {
-    console.log('❌ Closing edit modal');
     setIsEditModalOpen(false);
     setTempFormData({});
   };
@@ -290,8 +279,6 @@ const InteractiveBusinessCard = () => {
   const handleSaveEdit = async () => {
     setSaving(true);
     try {
-      console.log('💾 Saving data to Firebase:', tempFormData);
-      
       // Prepare data for Firebase - don't save the actual image data
       const dataToSave = {
         ...tempFormData,
@@ -308,7 +295,7 @@ const InteractiveBusinessCard = () => {
       closeEditModal();
       showNotification('Profile updated and saved to cloud!', 'success');
     } catch (error) {
-      console.error('❌ Error saving data:', error);
+      console.error('Error saving data:', error);
       showNotification('Error saving data to cloud', 'error');
     } finally {
       setSaving(false);
@@ -316,7 +303,6 @@ const InteractiveBusinessCard = () => {
   };
 
   const handleInputChange = (field, value) => {
-    console.log(`✏️ Field ${field} changed to:`, value);
     setTempFormData(prev => ({
       ...prev,
       [field]: value
@@ -325,29 +311,20 @@ const InteractiveBusinessCard = () => {
 
   const handlePhotoChange = (event) => {
     const file = event.target.files[0];
-    console.log('📸 Photo file selected:', file);
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        console.log('🖼️ FileReader loaded data URL');
         setTempFormData(prev => ({
           ...prev,
           photo: e.target.result
         }));
-      };
-      reader.onerror = (error) => {
-        console.error('❌ FileReader error:', error);
       };
       reader.readAsDataURL(file);
     }
   };
 
   // Improved image error handler
-  const handleImageError = (e, location = 'unknown') => {
-    console.error(`❌ Image error in ${location}:`, e);
-    console.error(`❌ Target src:`, e.target.src);
-    
-    // Use fallback image
+  const handleImageError = (e) => {
     e.target.src = fallbackImage;
     setImageError(true);
   };
@@ -355,17 +332,27 @@ const InteractiveBusinessCard = () => {
   // Function to convert image to base64 for the interactive card
   const getImageBase64 = async (imageSource) => {
     try {
-      console.log('🎨 Processing image for base64 conversion:', imageSource);
-      
       // If it's already a data URL, return it directly
       if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
-        console.log('✅ Already a data URL, using directly');
         return imageSource;
+      }
+      
+      // If it's the public folder path, construct full URL
+      if (typeof imageSource === 'string' && imageSource.startsWith('/')) {
+        const fullUrl = window.location.origin + imageSource;
+        const response = await fetch(fullUrl);
+        if (!response.ok) throw new Error('Failed to fetch image');
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
       }
       
       // If it's an external URL, fetch and convert
       if (typeof imageSource === 'string' && imageSource.startsWith('http')) {
-        console.log('🌐 Fetching external image for conversion...');
         const response = await fetch(imageSource);
         if (!response.ok) throw new Error('Failed to fetch image');
         const blob = await response.blob();
@@ -377,33 +364,11 @@ const InteractiveBusinessCard = () => {
         });
       }
       
-      // For imported images (like amanImage), we need to handle them differently
-      if (typeof imageSource === 'string') {
-        // Try to fetch from the current domain
-        try {
-          const fullUrl = window.location.origin + imageSource;
-          console.log('🔗 Trying to fetch from:', fullUrl);
-          const response = await fetch(fullUrl);
-          if (response.ok) {
-            const blob = await response.blob();
-            return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          }
-        } catch (error) {
-          console.log('❌ Failed to fetch local image, using fallback');
-        }
-      }
-      
       // For all other cases, use fallback
-      console.log('📦 Using fallback image');
       return fallbackImage;
       
     } catch (error) {
-      console.error('❌ Error converting image to base64:', error);
+      console.error('Error converting image to base64:', error);
       return fallbackImage;
     }
   };
@@ -417,11 +382,9 @@ const InteractiveBusinessCard = () => {
 
       // Get the current photo source
       const currentPhoto = getImageSource(formData.photo);
-      console.log('🖼️ Current photo source for interactive card:', currentPhoto);
       
       // Convert image to base64
       const photoBase64 = await getImageBase64(currentPhoto);
-      console.log('✅ Photo converted to base64, length:', photoBase64.length);
 
       // Generate vCard data for the interactive card
       const vCardData = generateVCardData();
@@ -530,15 +493,6 @@ const InteractiveBusinessCard = () => {
       text-decoration: none;
     }
     .contact-value:hover { color: #2dd4bf; }
-    .business-text {
-      color: #ffffff;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .business-item {
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
     .qr-section {
       background: linear-gradient(135deg, #1e293b, #334155);
       padding: 25px 20px;
@@ -636,22 +590,60 @@ const InteractiveBusinessCard = () => {
         </div>
       </div>
       
-      ${formData.business ? `
+      ${formData.facebook ? `
       <div class="contact-item">
         <div class="icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/>
-            <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/>
-            <path d="M12 3v6"/>
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
           </svg>
         </div>
         <div class="contact-info">
-          <div class="contact-label">Business</div>
-          <div class="business-text">
-            ${formData.business.split(',').map(business => `
-              <div class="business-item">${business.trim()}</div>
-            `).join('')}
-          </div>
+          <div class="contact-label">Facebook</div>
+          <a href="${formData.facebook}" target="_blank" class="contact-value">Visit Facebook</a>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${formData.instagram ? `
+      <div class="contact-item">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+          </svg>
+        </div>
+        <div class="contact-info">
+          <div class="contact-label">Instagram</div>
+          <a href="${formData.instagram}" target="_blank" class="contact-value">Visit Instagram</a>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${formData.whatsapp ? `
+      <div class="contact-item">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </div>
+        <div class="contact-info">
+          <div class="contact-label">WhatsApp</div>
+          <a href="https://wa.me/${formData.whatsapp}" target="_blank" class="contact-value">Chat on WhatsApp</a>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${formData.gmbProfile ? `
+      <div class="contact-item">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="contact-info">
+          <div class="contact-label">Google Business</div>
+          <a href="${formData.gmbProfile}" target="_blank" class="contact-value">View Profile</a>
         </div>
       </div>
       ` : ''}
@@ -753,10 +745,10 @@ const InteractiveBusinessCard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium transition-all duration-300 transform translate-x-0 ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 sm:px-6 sm:py-3 rounded-lg text-white font-medium transition-all duration-300 transform translate-x-0 text-sm sm:text-base ${
           notification.type === 'success' ? 'bg-green-500' : 
           notification.type === 'error' ? 'bg-red-500' : 
           'bg-teal-500'
@@ -767,27 +759,27 @@ const InteractiveBusinessCard = () => {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-6 py-4 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-white">Edit Profile</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs sm:max-w-sm md:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 sm:px-6 py-4 rounded-t-2xl">
+              <h2 className="text-lg sm:text-xl font-bold text-white">Edit Profile</h2>
             </div>
             
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               {/* Photo Upload */}
               <div className="text-center">
                 <div className="relative inline-block">
                   <img 
                     src={getImageSource(tempFormData.photo)} 
                     alt="Profile" 
-                    className="w-24 h-24 rounded-full mx-auto border-4 border-teal-500 object-cover"
-                    onError={(e) => handleImageError(e, 'edit-modal')}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mx-auto border-4 border-teal-500 object-cover"
+                    onError={handleImageError}
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 bg-teal-500 text-white p-2 rounded-full shadow-lg hover:bg-teal-600 transition-colors"
+                    className="absolute bottom-0 right-0 bg-teal-500 text-white p-1.5 sm:p-2 rounded-full shadow-lg hover:bg-teal-600 transition-colors"
                   >
-                    <EditIcon size={16} />
+                    <EditIcon size={14} className="sm:w-4 sm:h-4" />
                   </button>
                   <input
                     type="file"
@@ -797,79 +789,113 @@ const InteractiveBusinessCard = () => {
                     className="hidden"
                   />
                 </div>
-                <p className="text-sm text-gray-500 mt-2">Click camera icon to change photo</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-2">Click camera icon to change photo</p>
               </div>
 
               {/* Form Fields */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Name</label>
                   <input
                     type="text"
                     value={tempFormData.name || ''}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Title</label>
                   <input
                     type="text"
                     value={tempFormData.title || ''}
                     onChange={(e) => handleInputChange('title', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input
                     type="text"
                     value={tempFormData.phone || ''}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     placeholder="Enter phone number"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Map Link</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Map Link</label>
                   <input
                     type="text"
                     value={tempFormData.mapLink || ''}
                     onChange={(e) => handleInputChange('mapLink', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  />
+                </div>
+
+                {/* New Social Media Fields */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+                  <input
+                    type="text"
+                    value={tempFormData.facebook || ''}
+                    onChange={(e) => handleInputChange('facebook', e.target.value)}
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="https://facebook.com/yourprofile"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
-                  <textarea
-                    value={tempFormData.business || ''}
-                    onChange={(e) => handleInputChange('business', e.target.value)}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    placeholder="Enter businesses separated by commas"
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
+                  <input
+                    type="text"
+                    value={tempFormData.instagram || ''}
+                    onChange={(e) => handleInputChange('instagram', e.target.value)}
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="https://instagram.com/yourprofile"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
+                  <input
+                    type="text"
+                    value={tempFormData.whatsapp || ''}
+                    onChange={(e) => handleInputChange('whatsapp', e.target.value)}
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="Enter WhatsApp number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Google Business Profile</label>
+                  <input
+                    type="text"
+                    value={tempFormData.gmbProfile || ''}
+                    onChange={(e) => handleInputChange('gmbProfile', e.target.value)}
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    placeholder="https://g.page/yourbusiness"
                   />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 sm:gap-3 pt-4">
                 <button
                   onClick={closeEditModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <SaveIcon size={16} />
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  <SaveIcon size={14} className="sm:w-4 sm:h-4" />
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
@@ -878,98 +904,157 @@ const InteractiveBusinessCard = () => {
       )}
 
       {/* Main Card Container */}
-      <div className="w-full max-w-sm sm:max-w-md mx-auto">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
         <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
           
           {/* Header Section */}
-          <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-6 py-8 text-center">
-            <div className="mb-6">
+          <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 sm:px-6 py-6 sm:py-8 text-center">
+            <div className="mb-4 sm:mb-6">
               <img 
                 src={getImageSource(formData.photo)} 
                 alt="Viponjit Singh AMAN" 
-                className="w-24 h-24 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
-                onError={(e) => handleImageError(e, 'main-card')}
+                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
+                onError={handleImageError}
               />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
               {formData.name}
             </h1>
             {formData.title && (
-              <p className="text-lg text-white opacity-95">
+              <p className="text-base sm:text-lg md:text-xl text-white opacity-95">
                 {formData.title}
               </p>
             )}
           </div>
 
           {/* Contact Information Section */}
-          <div className="px-6 py-6 bg-white">
-            <div className="space-y-4">
+          <div className="px-4 sm:px-6 py-4 sm:py-6 bg-white">
+            <div className="space-y-3 sm:space-y-4">
               
               {/* Phone - Only show if phone exists */}
               {formData.phone && (
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
-                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-3 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <PhoneIcon size={20} color="#ffffff" />
+                <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <PhoneIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                    <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
                       Phone
                     </div>
                     <a 
                       href={`tel:${formData.phone}`} 
-                      className="text-lg text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block"
+                      className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
                     >
-                      ${formData.phone}
+                      {formData.phone}
                     </a>
                   </div>
                 </div>
               )}
 
               {/* Map Link */}
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
-                <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-3 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MapIcon size={20} color="#ffffff" />
+              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MapIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                  <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
                     Location
                   </div>
                   <a 
                     href={formData.mapLink} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-lg text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block"
+                    className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
                   >
                     View on Map
                   </a>
                 </div>
               </div>
 
-              {/* Business - Only show if business exists */}
-              {formData.business && (
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
-                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-3 rounded-xl flex items-center justify-center flex-shrink-0 mt-1">
-                    <BuildingIcon size={20} color="#ffffff" />
+              {/* Facebook - Only show if exists */}
+              {formData.facebook && (
+                <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FacebookIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-2">
-                      Business
+                    <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                      Facebook
                     </div>
-                    <div className="space-y-2">
-                      {formData.business.split(',').slice(0, 3).map((business, index) => (
-                        <div 
-                          key={index}
-                          className="text-base font-semibold text-gray-800 leading-tight"
-                        >
-                          {business.trim()}
-                        </div>
-                      ))}
-                      {formData.business.split(',').length > 3 && (
-                        <div className="text-sm text-teal-600 font-semibold">
-                          +{formData.business.split(',').length - 3} more
-                        </div>
-                      )}
+                    <a 
+                      href={formData.facebook} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
+                    >
+                      Visit Profile
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Instagram - Only show if exists */}
+              {formData.instagram && (
+                <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <InstagramIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                      Instagram
                     </div>
+                    <a 
+                      href={formData.instagram} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
+                    >
+                      Visit Profile
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* WhatsApp - Only show if exists */}
+              {formData.whatsapp && (
+                <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <WhatsAppIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                      WhatsApp
+                    </div>
+                    <a 
+                      href={`https://wa.me/${formData.whatsapp}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
+                    >
+                      Chat on WhatsApp
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Google Business Profile - Only show if exists */}
+              {formData.gmbProfile && (
+                <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-gray-200 transition-all duration-200 hover:shadow-md">
+                  <div className="bg-gradient-to-r from-teal-600 to-teal-500 p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <BusinessIcon size={16} className="sm:w-5 sm:h-5" color="#ffffff" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                      Google Business
+                    </div>
+                    <a 
+                      href={formData.gmbProfile} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm sm:text-lg md:text-base text-teal-600 font-semibold no-underline hover:text-teal-500 transition-colors duration-200 block truncate"
+                    >
+                      View Profile
+                    </a>
                   </div>
                 </div>
               )}
@@ -977,46 +1062,46 @@ const InteractiveBusinessCard = () => {
           </div>
 
           {/* QR Code Section */}
-          <div className="bg-gray-50 px-6 py-8 text-center border-t border-gray-200">
-            <h3 className="text-xl font-bold text-teal-600 mb-6">
+          <div className="bg-gray-50 px-4 sm:px-6 py-6 sm:py-8 text-center border-t border-gray-200">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-teal-600 mb-4 sm:mb-6">
               Scan to Save Contact
             </h3>
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 inline-block mb-6 w-full max-w-[240px]">
+            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 inline-block mb-4 sm:mb-6 w-full max-w-[200px] sm:max-w-[240px]">
               <canvas 
                 ref={qrCanvasRef}
-                className="w-48 h-48 mx-auto block"
+                className="w-32 h-32 sm:w-48 sm:h-48 mx-auto block"
                 style={{ display: 'block' }}
               />
             </div>
             
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <button 
                 onClick={openEditModal}
-                className="bg-gray-600 text-white border-none px-4 py-3 rounded-lg text-base font-semibold cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-md hover:bg-gray-700"
+                className="bg-gray-600 text-white border-none px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-semibold cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-md hover:bg-gray-700"
               >
-                <EditIcon size={18} color="#ffffff" />
+                <EditIcon size={14} className="sm:w-4 sm:h-4" color="#ffffff" />
                 Edit
               </button>
               <button 
                 onClick={createInteractiveCard}
                 disabled={loading}
                 className={`
-                  bg-gradient-to-r from-teal-600 to-teal-500 text-white border-none px-4 py-3 
-                  rounded-lg text-base font-semibold cursor-pointer transition-all duration-300 
+                  bg-gradient-to-r from-teal-600 to-teal-500 text-white border-none px-3 sm:px-4 py-2 sm:py-3 
+                  rounded-lg text-sm sm:text-base font-semibold cursor-pointer transition-all duration-300 
                   flex items-center justify-center gap-2 hover:shadow-md transform hover:-translate-y-0.5
                   disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none
                 `}
               >
-                <ShareIcon size={18} color="#ffffff" />
+                <ShareIcon size={14} className="sm:w-4 sm:h-4" color="#ffffff" />
                 {loading ? 'Creating...' : 'Share'}
               </button>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="bg-teal-600 px-6 py-4 text-center">
-            <div className="text-white font-semibold text-lg">
+          <div className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 text-center">
+            <div className="text-white font-semibold text-base sm:text-lg md:text-xl">
               GoodwillProperty
             </div>
           </div>
